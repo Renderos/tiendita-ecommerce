@@ -1,25 +1,41 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f3ead3;
-  --foreground: #2b2118;
+  --background: #f7f8f6;
+  --foreground: #0f1a14;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
 
-  --color-zelda-parchment: #f3ead3;
-  --color-zelda-forest: #1f4d36;
-  --color-zelda-forest-dark: #163a28;
-  --color-zelda-gold: #c9a227;
-  --color-zelda-sky: #3e6d9c;
-  --color-zelda-ink: #2b2118;
-  --color-zelda-ember: #a13d2c;
+  /* Paleta de la tienda: verde fresco + acento cálido para precios y ofertas */
+  --color-brand-50: #ecfdf3;
+  --color-brand-100: #d1fae1;
+  --color-brand-500: #16a34a;
+  --color-brand-600: #15803d;
+  --color-brand-700: #166534;
+  --color-brand-900: #0b3b22;
+  --color-accent-400: #fb923c;
+  --color-accent-500: #f97316;
+  --color-ink: #0f1a14;
+  --color-muted: #5b6b62;
+  --color-line: #e3e8e4;
+  --color-danger: #e11d48;
 }
 
 body {
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--background);
+  color: var(--foreground);
+}
+
+/* Quita las flechas del input numérico en los selectores de cantidad */
+input[type='number'].no-spin::-webkit-inner-spin-button,
+input[type='number'].no-spin::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type='number'].no-spin {
+  -moz-appearance: textfield;
 }

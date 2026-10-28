@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { isAuthenticated } from '@/app/lib/auth';
 import CartSummary from '@/app/components/CartSummary';
@@ -9,10 +10,20 @@ export default async function CheckoutPage() {
   }
 
   return (
-    <main className="mx-auto max-w-md px-4 py-8">
-      <h1 className="mb-6 text-2xl font-bold text-zelda-forest">Pagar pedido</h1>
-      <CartSummary />
-      <CheckoutForm />
+    <main className="py-8 sm:py-10">
+      <Link href="/cart" className="text-sm font-medium text-muted hover:text-ink">
+        ← Volver al carrito
+      </Link>
+      <h1 className="mt-3 text-3xl font-bold tracking-tight">Pagar pedido</h1>
+
+      <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_380px] lg:items-start">
+        <section className="rounded-2xl border border-line bg-white p-6">
+          <h2 className="text-lg font-semibold">Método de pago</h2>
+          <p className="mb-4 mt-1 text-sm text-muted">Tus datos de tarjeta se procesan de forma segura con Stripe.</p>
+          <CheckoutForm />
+        </section>
+        <CartSummary />
+      </div>
     </main>
   );
 }

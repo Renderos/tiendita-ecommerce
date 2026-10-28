@@ -2,10 +2,9 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { isAuthenticated } from '@/app/lib/auth';
 import { getOrders } from '@/app/lib/orders';
-
-function formatPrice(value: number) {
-  return value.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
-}
+import { formatPrice } from '@/app/lib/format';
+import OrderStatusBadge from '@/app/components/OrderStatusBadge';
+import ProductImage from '@/app/components/ProductImage';
 
 function formatDate(value?: string) {
   if (!value) return '';
@@ -16,12 +15,6 @@ function formatDate(value?: string) {
   });
 }
 
-const statusLabels: Record<string, { text: string; className: string }> = {
-  paid: { text: 'Pagada', className: 'bg-zelda-forest/15 text-zelda-forest' },
-  pending: { text: 'Pendiente', className: 'bg-zelda-gold/20 text-zelda-gold' },
-  failed: { text: 'Fallida', className: 'bg-zelda-ember/15 text-zelda-ember' },
-};
-
 export default async function OrdersPage() {
   if (!(await isAuthenticated())) {
     redirect('/login');
@@ -31,10 +24,14 @@ export default async function OrdersPage() {
 
   if (orders.length === 0) {
     return (
-      <main className="mx-auto max-w-2xl px-4 py-12 text-center">
-        <h1 className="mb-4 text-2xl font-bold text-zelda-forest">Historial de compras</h1>
-        <p className="mb-4 text-zelda-ink/70">Todavía no tienes compras registradas.</p>
-        <Link href="/" className="text-zelda-sky hover:underline">
+      <main className="mx-auto max-w-md py-20 text-center">
+        <div className="mx-auto grid size-20 place-items-center rounded-full bg-brand-50 text-4xl">🧾</div>
+        <h1 className="mt-6 text-2xl font-bold tracking-tight">Historial de compras</h1>
+        <p className="mt-2 text-muted">Todavía no tienes compras registradas.</p>
+        <Link
+          href="/"
+          className="mt-6 inline-block rounded-full bg-brand-600 px-6 py-3 font-semibold text-white transition hover:bg-brand-700"
+        >
           Ver catálogo
         </Link>
       </main>
@@ -42,38 +39,40 @@ export default async function OrdersPage() {
   }
 
   return (
-    <main className="mx-auto max-w-2xl px-4 py-8">
-      <h1 className="mb-6 text-2xl font-bold text-zelda-forest">Historial de compras</h1>
+    <main className="mx-auto max-w-3xl py-8 sm:py-10">
+      <h1 className="text-3xl font-bold tracking-tight">Historial de compras</h1>
 
-      <div className="space-y-4">
-        {orders.map((order) => {
-          const status = statusLabels[order.status] ?? {
-            text: order.status,
-            className: 'bg-zelda-ink/10 text-zelda-ink/70',
-          };
-
-          return (
-            <Link
-              key={order.id}
-              href={`/orders/${order.id}`}
-              className="block rounded-lg border border-zelda-ink/15 bg-white/70 p-4 hover:border-zelda-gold hover:shadow-md"
-            >
-              <div className="flex items-center justify-between">
-                <span className="font-semibold text-zelda-ink">Orden #{order.id}</span>
-                <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${status.className}`}>
-                  {status.text}
-                </span>
+      <div className="mt-6 space-y-3">
+        {orders.map((order) => (
+          <Link
+            key={order.id}
+            href={`/orders/${order.id}`}
+            className="flex items-center gap-4 rounded-2xl border border-line bg-white p-4 transition hover:border-brand-500 hover:shadow-lg hover:shadow-brand-900/5"
+          >
+            <div className="flex -space-x-3">
+              {order.items.slice(0, 3).map((item) =>
+                item.product ? (
+                  <ProductImage
+                    key={item.id}
+                    product={item.product}
+                    sizes="48px"
+                    className="size-12 rounded-full ring-2 ring-white"
+                  />
+                ) : null
+              )}
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="font-semibold">Orden #{order.id}</span>
+                <OrderStatusBadge status={order.status} />
               </div>
-              <div className="mt-1 flex items-center justify-between text-sm text-zelda-ink/70">
-                <span>{formatDate(order.created_at)}</span>
-                <span className="font-medium text-zelda-gold">{formatPrice(Number(order.total))}</span>
-              </div>
-              <p className="mt-1 text-xs text-zelda-ink/50">
-                {order.items.length} producto{order.items.length !== 1 ? 's' : ''}
+              <p className="mt-0.5 text-sm text-muted">
+                {formatDate(order.created_at)} · {order.items.length} producto{order.items.length !== 1 ? 's' : ''}
               </p>
-            </Link>
-          );
-        })}
+            </div>
+            <span className="text-lg font-bold">{formatPrice(order.total)}</span>
+          </Link>
+        ))}
       </div>
     </main>
   );

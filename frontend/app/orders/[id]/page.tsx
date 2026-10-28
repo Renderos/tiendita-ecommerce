@@ -3,10 +3,8 @@ import { notFound, redirect } from 'next/navigation';
 import { isAuthenticated } from '@/app/lib/auth';
 import { getOrder } from '@/app/lib/orders';
 import { ApiError } from '@/app/lib/api';
-
-function formatPrice(value: number) {
-  return value.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
-}
+import OrderItemsCard from '@/app/components/OrderItemsCard';
+import OrderStatusBadge from '@/app/components/OrderStatusBadge';
 
 export default async function OrderDetailPage({
   params,
@@ -30,33 +28,31 @@ export default async function OrderDetailPage({
   }
 
   return (
-    <main className="mx-auto max-w-md px-4 py-8">
-      <Link href="/orders" className="mb-4 inline-block text-sm text-zelda-sky hover:underline">
+    <main className="mx-auto max-w-2xl py-8 sm:py-10">
+      <Link href="/orders" className="text-sm font-medium text-muted hover:text-ink">
         ← Volver al historial
       </Link>
 
-      <h1 className="mb-1 text-2xl font-bold text-zelda-forest">Orden #{order.id}</h1>
-      <p className="mb-6 text-sm text-zelda-ink/70">Estado: {order.status}</p>
-
-      <div className="mb-6 rounded-lg border border-zelda-ink/15 bg-white/70 p-4">
-        {order.items.map((item) => (
-          <div key={item.id} className="flex justify-between py-1 text-sm text-zelda-ink">
-            <span>
-              {item.product?.name ?? `Producto #${item.product_id}`} x{item.quantity}
-            </span>
-            <span>{formatPrice(Number(item.price) * item.quantity)}</span>
-          </div>
-        ))}
-        <div className="mt-2 flex justify-between border-t border-zelda-ink/15 pt-2 font-bold text-zelda-gold">
-          <span>Total</span>
-          <span>{formatPrice(Number(order.total))}</span>
-        </div>
+      <div className="mb-6 mt-3 flex flex-wrap items-center gap-3">
+        <h1 className="text-3xl font-bold tracking-tight">Orden #{order.id}</h1>
+        <OrderStatusBadge status={order.status} />
       </div>
 
+      <OrderItemsCard order={order} />
+
       {order.payment && (
-        <div className="rounded-lg border border-zelda-ink/15 bg-white/70 p-4 text-sm text-zelda-ink/70">
-          <p>Metodo de pago: {order.payment.payment_method ?? '—'}</p>
-          <p>Estado del pago: {order.payment.status}</p>
+        <div className="mt-4 rounded-2xl border border-line bg-white p-6 text-sm">
+          <h2 className="font-semibold">Pago</h2>
+          <dl className="mt-3 space-y-1.5 text-muted">
+            <div className="flex justify-between">
+              <dt>Método</dt>
+              <dd className="text-ink">{order.payment.payment_method ?? '—'}</dd>
+            </div>
+            <div className="flex justify-between">
+              <dt>Estado</dt>
+              <dd className="text-ink">{order.payment.status}</dd>
+            </div>
+          </dl>
         </div>
       )}
     </main>

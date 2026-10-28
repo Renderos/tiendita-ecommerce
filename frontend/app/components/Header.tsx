@@ -7,37 +7,56 @@ export default async function Header() {
   const user = await getCurrentUser();
 
   return (
-    <header className="mb-6 flex items-center justify-between border-b border-zelda-ink/15 pb-4">
-      <Link href="/" className="text-lg font-bold text-zelda-forest">
-        Tiendita
-      </Link>
+    <header className="sticky top-0 z-30 border-b border-line/80 bg-white/80 backdrop-blur-md">
+      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
+        <Link href="/" className="flex items-center gap-2 text-lg font-bold tracking-tight text-ink">
+          <span className="grid size-9 place-items-center rounded-xl bg-brand-600 text-white shadow-sm shadow-brand-600/30">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="size-5" aria-hidden>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 8h14l-1.2 10.2a2 2 0 0 1-2 1.8H8.2a2 2 0 0 1-2-1.8L5 8Z" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 8V6a3 3 0 0 1 6 0v2" />
+            </svg>
+          </span>
+          Tiendita
+        </Link>
 
-      <div className="flex items-center gap-4">
-        <CartBadge />
-
-        {user ? (
-          <div className="flex items-center gap-3">
-            <Link href="/orders" className="text-sm text-zelda-sky hover:underline">
+        <nav className="flex items-center gap-2 sm:gap-3">
+          {user && (
+            <Link
+              href="/orders"
+              className="hidden rounded-full px-3 py-2 text-sm font-medium text-muted transition hover:bg-brand-50 hover:text-brand-700 sm:block"
+            >
               Mis compras
             </Link>
-            <span className="text-sm text-zelda-ink/70">{user.name}</span>
-            <form action={logoutAction}>
-              <button
-                type="submit"
-                className="bg-zelda-gold/30 hover:bg-zelda-gold/50 text-zelda-ink text-sm px-3 py-1.5 rounded-md"
+          )}
+
+          <CartBadge />
+
+          {user ? (
+            <div className="flex items-center gap-2">
+              <span
+                title={user.name}
+                className="grid size-9 place-items-center rounded-full bg-brand-100 text-sm font-semibold text-brand-700"
               >
-                Cerrar sesión
-              </button>
-            </form>
-          </div>
-        ) : (
-          <Link
-            href="/login"
-            className="bg-zelda-forest hover:bg-zelda-forest-dark text-white text-sm px-3 py-1.5 rounded-md"
-          >
-            Iniciar sesión
-          </Link>
-        )}
+                {user.name.charAt(0).toUpperCase()}
+              </span>
+              <form action={logoutAction}>
+                <button
+                  type="submit"
+                  className="rounded-full px-3 py-2 text-sm font-medium text-muted transition hover:bg-gray-100 hover:text-ink"
+                >
+                  Salir
+                </button>
+              </form>
+            </div>
+          ) : (
+            <Link
+              href="/login"
+              className="rounded-full bg-ink px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-700"
+            >
+              Iniciar sesión
+            </Link>
+          )}
+        </nav>
       </div>
     </header>
   );

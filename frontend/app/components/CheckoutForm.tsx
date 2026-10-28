@@ -6,6 +6,7 @@ import { CardElement, Elements, useElements, useStripe } from '@stripe/react-str
 import { getStripe } from '@/app/lib/stripe-client';
 import { useCart } from '@/app/context/CartContext';
 import { createOrderAction } from '@/app/actions/orders';
+import { formatPrice } from '@/app/lib/format';
 
 function CheckoutFormInner() {
   const stripe = useStripe();
@@ -55,23 +56,23 @@ function CheckoutFormInner() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="rounded-md border border-zelda-ink/20 bg-white p-3">
+      <div className="rounded-xl border border-line bg-white px-4 py-3.5 transition focus-within:border-brand-500 focus-within:ring-4 focus-within:ring-brand-500/15">
         <CardElement
-          options={{ style: { base: { fontSize: '16px', color: '#2b2118' } } }}
+          options={{ style: { base: { fontSize: '16px', color: '#0f1a14', '::placeholder': { color: '#8a978f' } } } }}
         />
       </div>
 
-      {error && <p className="text-sm text-zelda-ember">{error}</p>}
+      {error && <p className="rounded-xl bg-danger/10 px-4 py-3 text-sm text-danger">{error}</p>}
 
       <button
         type="submit"
         disabled={!stripe || isProcessing || items.length === 0}
-        className="w-full rounded-md bg-zelda-forest px-4 py-3 font-medium text-white hover:bg-zelda-forest-dark disabled:opacity-50"
+        className="w-full rounded-full bg-brand-600 px-6 py-3.5 font-semibold text-white shadow-lg shadow-brand-600/25 transition hover:bg-brand-700 disabled:opacity-60"
       >
-        {isProcessing ? 'Procesando...' : `Pagar $${total.toFixed(2)}`}
+        {isProcessing ? 'Procesando…' : `Pagar ${formatPrice(total)}`}
       </button>
 
-      <p className="text-xs text-zelda-ink/50">
+      <p className="text-center text-xs text-muted">
         Modo de prueba: tarjeta 4242 4242 4242 4242, cualquier fecha futura, cualquier CVC.
       </p>
     </form>

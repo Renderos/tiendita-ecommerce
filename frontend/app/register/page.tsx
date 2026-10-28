@@ -8,7 +8,7 @@ export default async function RegisterPage() {
   }
 
   return (
-    <main className="mx-auto max-w-sm px-4 py-12">
+    <main className="mx-auto max-w-md py-12 sm:py-16">
       <RegisterForm />
     </main>
   );

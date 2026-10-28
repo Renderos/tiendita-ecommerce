@@ -5,8 +5,8 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreOrderRequest;
 use App\Models\Order;
 use App\Models\OrderItem;
-use App\Models\Payment;
 use App\Models\Product;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Stripe\Exception\ApiErrorException;
@@ -15,6 +15,8 @@ use Stripe\Stripe;
 
 class OrderController extends Controller
 {
+    private const DELIVERY_FEE = 0;
+
     public function __construct()
     {
         Stripe::setApiKey(config('services.stripe.secret'));
@@ -34,17 +36,15 @@ class OrderController extends Controller
         try {
             $orders = $request->user()
                 ->orders()
-                ->with(['items.product', 'payment'])
-                ->latest()
+                ->with('items.product')
+                ->latest('id')
                 ->get();
 
-            return response()->json([
-                'data' => $orders,
-            ]);
+            return response()->json(['data' => $orders]);
         } catch (\Exception $error) {
-            return response()->json([
-                'message' => $error->getMessage(),
-            ], 500);
+            report($error);
+
+            return response()->json(['message' => 'Unexpected error'], 500);
         }
     }
 
@@ -62,19 +62,19 @@ class OrderController extends Controller
     public function show(Request $request, string $id)
     {
         try {
-            // Solo puede ver ordenes que le pertenecen a el mismo
+            // Solo puede ver ordenes que le pertenecen
             $order = $request->user()
                 ->orders()
-                ->with(['items.product', 'payment'])
+                ->with('items.product')
                 ->findOrFail($id);
 
-            return response()->json([
-                'data' => $order,
-            ]);
+            return response()->json(['data' => $order]);
+        } catch (ModelNotFoundException) {
+            return response()->json(['message' => 'Order not found'], 404);
         } catch (\Exception $error) {
-            return response()->json([
-                'message' => $error->getMessage(),
-            ], 404);
+            report($error);
+
+            return response()->json(['message' => 'Unexpected error'], 500);
         }
     }
 
@@ -108,28 +108,37 @@ class OrderController extends Controller
     public function store(StoreOrderRequest $request)
     {
         $data = $request->validated();
+        $order = null;
 
         try {
-            // 1. Creamos la orden y sus items dentro de una transaccion.
-            // Si algo falla aqui (ej. stock insuficiente) no se guarda nada.
+            // 1. Orden + items + descuento de stock en una sola transaccion.
             $order = DB::transaction(function () use ($data, $request) {
-                $total = 0;
+                $subtotal = 0;
                 $lines = [];
 
                 foreach ($data['items'] as $item) {
-                    $product = Product::findOrFail($item['product_id']);
+                    $product = Product::where('is_active', true)
+                        ->lockForUpdate()
+                        ->findOrFail($item['product_id']);
 
                     if ($product->stock < $item['quantity']) {
-                        throw new \Exception("Not enough stock for product: {$product->name}");
+                        throw new \DomainException("Not enough stock for product: {$product->name}");
                     }
 
                     $lines[] = ['product' => $product, 'quantity' => $item['quantity']];
-                    $total += $product->price * $item['quantity'];
+                    $subtotal += $product->price * $item['quantity'];
                 }
+
+                $subtotal = round($subtotal, 2);
+                $deliveryFee = self::DELIVERY_FEE;
+                $discount = 0;
 
                 $order = Order::create([
                     'user_id' => $request->user()->id,
-                    'total' => $total,
+                    'subtotal' => $subtotal,
+                    'delivery_fee' => $deliveryFee,
+                    'discount_amount' => $discount,
+                    'total' => $subtotal + $deliveryFee - $discount,
                     'status' => 'pending',
                 ]);
 
@@ -138,7 +147,7 @@ class OrderController extends Controller
                         'order_id' => $order->id,
                         'product_id' => $line['product']->id,
                         'quantity' => $line['quantity'],
-                        'price' => $line['product']->price,
+                        'unit_price' => $line['product']->price,
                     ]);
 
                     $line['product']->decrement('stock', $line['quantity']);
@@ -147,10 +156,9 @@ class OrderController extends Controller
                 return $order;
             });
 
-            // 2. Procesamos el pago con Stripe (esto ya es una llamada externa,
-            // por eso va fuera de la transaccion de base de datos)
+            // 2. Cobro con Stripe (llamada externa, fuera de la transaccion)
             $paymentIntent = PaymentIntent::create([
-                'amount' => (int) round($order->total * 100), // Stripe espera el monto en centavos
+                'amount' => (int) round($order->total * 100), // Stripe usa centavos
                 'currency' => 'usd',
                 'payment_method' => $data['payment_method'],
                 'confirm' => true,
@@ -160,56 +168,56 @@ class OrderController extends Controller
                 ],
             ]);
 
-            $status = $paymentIntent->status === 'succeeded' ? 'paid' : 'failed';
-            $order->update(['status' => $status]);
-            $order->load('items.product', 'payment');
+            $paid = $paymentIntent->status === 'succeeded';
 
-            Payment::create([
-                'order_id' => $order->id,
-                'stripe_payment_intent_id' => $paymentIntent->id,
-                'amount' => $order->total,
-                'currency' => 'usd',
-                'status' => $paymentIntent->status,
-                'payment_method' => $data['payment_method'],
+            $order->update([
+                'status' => $paid ? 'paid' : 'cancelled',
+                'payment_method' => 'card',
+                'payment_id' => $paymentIntent->id,
             ]);
 
-            if ($status === 'failed') {
-                // Devolvemos el stock reservado ya que el pago no se completo
-                foreach ($order->items as $item) {
-                    $item->product->increment('stock', $item->quantity);
-                }
+            if (! $paid) {
+                $this->restoreStock($order);
 
                 return response()->json([
                     'message' => 'Payment was not completed',
-                    'data' => $order->fresh(['items.product', 'payment']),
+                    'data' => $order->fresh(['items.product']),
                 ], 402);
             }
 
             return response()->json([
                 'message' => 'Order created and paid successfully',
-                'data' => $order->fresh(['items.product', 'payment']),
+                'data' => $order->fresh(['items.product']),
             ], 201);
 
         } catch (ApiErrorException $error) {
-            // Errores propios de Stripe (tarjeta rechazada, fondos insuficientes, etc.)
-            if (isset($order)) {
-                $order->load('items.product');
-
-                foreach ($order->items as $item) {
-                    $item->product->increment('stock', $item->quantity);
-                }
-
-                $order->update(['status' => 'failed']);
+            // Tarjeta rechazada, fondos insuficientes, etc.
+            if ($order) {
+                $this->restoreStock($order);
+                $order->update(['status' => 'cancelled']);
             }
 
             return response()->json([
                 'message' => 'Stripe error: '.$error->getMessage(),
             ], 402);
 
+        } catch (ModelNotFoundException) {
+            return response()->json(['message' => 'One of the products is not available'], 422);
+
+        } catch (\DomainException $error) {
+            return response()->json(['message' => $error->getMessage()], 422);
+
         } catch (\Exception $error) {
-            return response()->json([
-                'message' => $error->getMessage(),
-            ], 422);
+            report($error);
+
+            return response()->json(['message' => 'Unexpected error'], 500);
+        }
+    }
+
+    private function restoreStock(Order $order): void
+    {
+        foreach ($order->items()->with('product')->get() as $item) {
+            $item->product->increment('stock', $item->quantity);
         }
     }
 }

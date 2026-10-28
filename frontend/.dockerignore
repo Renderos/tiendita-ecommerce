@@ -1,0 +1,21 @@
+# Se reinstalan / regeneran dentro de la imagen
+node_modules
+.next
+out
+build
+
+# Secretos: se inyectan desde docker-compose, nunca dentro de la imagen
+.env*
+
+# Control de versiones, editor y archivos que no se usan en runtime
+.git
+.gitignore
+.dockerignore
+Dockerfile
+README.md
+AGENTS.md
+CLAUDE.md
+*.log
+.vscode
+.idea
+.DS_Store

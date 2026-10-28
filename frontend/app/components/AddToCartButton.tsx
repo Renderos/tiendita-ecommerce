@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useCart } from '@/app/context/CartContext';
 import type { Product } from '@/app/types';
+import QuantityStepper from './QuantityStepper';
 
 export default function AddToCartButton({ product }: { product: Product }) {
   const { addItem } = useCart();
@@ -19,7 +20,7 @@ export default function AddToCartButton({ product }: { product: Product }) {
 
   if (outOfStock) {
     return (
-      <button disabled className="w-full rounded-md bg-zelda-ink/10 px-4 py-2 text-sm font-medium text-zelda-ink/50">
+      <button disabled className="w-full rounded-full bg-gray-100 px-6 py-3.5 font-semibold text-muted">
         Agotado
       </button>
     );
@@ -27,19 +28,14 @@ export default function AddToCartButton({ product }: { product: Product }) {
 
   return (
     <div className="flex items-center gap-3">
-      <input
-        type="number"
-        min={1}
-        max={product.stock}
-        value={quantity}
-        onChange={(e) => setQuantity(Math.max(1, Math.min(product.stock, Number(e.target.value))))}
-        className="w-16 rounded border border-zelda-ink/20 px-2 py-2 text-sm text-zelda-ink"
-      />
+      <QuantityStepper value={quantity} max={product.stock} onChange={setQuantity} size="lg" />
       <button
         onClick={handleAdd}
-        className="flex-1 rounded-md bg-zelda-forest px-4 py-2 text-sm font-medium text-white hover:bg-zelda-forest-dark"
+        className={`flex-1 rounded-full px-6 py-3.5 font-semibold text-white shadow-lg shadow-brand-600/25 transition active:scale-[0.98] ${
+          added ? 'bg-brand-700' : 'bg-brand-600 hover:bg-brand-700'
+        }`}
       >
-        {added ? 'Agregado ✓' : 'Agregar al carrito'}
+        {added ? 'Agregado al carrito ✓' : 'Agregar al carrito'}
       </button>
     </div>
   );
