@@ -1,0 +1,43 @@
+services:
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: tiendita-api
+    restart: unless-stopped
+    environment:
+      APP_NAME: Tiendita
+      APP_ENV: production
+      APP_DEBUG: "false"
+      APP_KEY: ${APP_KEY:?Define APP_KEY en el archivo .env}
+      APP_URL: ${APP_URL:-http://localhost:8000}
+      LOG_CHANNEL: stderr
+      # La API es stateless (tokens de Sanctum): no usa sesiones ni colas,
+      # asi evitamos depender de tablas cache/sessions/jobs que no existen en Neon
+      SESSION_DRIVER: array
+      CACHE_STORE: file
+      QUEUE_CONNECTION: sync
+      DB_CONNECTION: pgsql
+      DB_HOST: ${DB_HOST:?Define DB_HOST en el archivo .env}
+      DB_PORT: ${DB_PORT:-5432}
+      DB_DATABASE: ${DB_DATABASE:?Define DB_DATABASE en el archivo .env}
+      DB_USERNAME: ${DB_USERNAME:?Define DB_USERNAME en el archivo .env}
+      DB_PASSWORD: ${DB_PASSWORD:?Define DB_PASSWORD en el archivo .env}
+      DB_SSLMODE: ${DB_SSLMODE:-require}
+      STRIPE_KEY: ${STRIPE_KEY}
+      STRIPE_SECRET: ${STRIPE_SECRET}
+      RUN_MIGRATIONS: ${RUN_MIGRATIONS:-false}
+      RUN_SEED: ${RUN_SEED:-false}
+      GENERATE_SWAGGER: ${GENERATE_SWAGGER:-false}
+    ports:
+      - "8000:8000"
+    networks:
+      - tiendita-net
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        # Llave publica de Stripe (pk_test_...): se incrusta en el JS del navegador al compilar
+        NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${STRIPE_KEY}
